@@ -34,7 +34,7 @@ class CIRunnner:
   Only verifies the first test in each directory 
   '''
 
-  SUPPORTED_DATABASES = "mysql postgres mongodb cassandra sqlite none".split()
+  SUPPORTED_DATABASES = "mysql postgres mongodb cassandra elasticsearch sqlite none".split()
   
   def __init__(self, mode, testdir=None):
     '''
@@ -348,6 +348,10 @@ class CIRunnner:
     until timeout 15s sudo apt-key adv --keyserver pgp.mit.edu --recv 4BD736A82B5C1B00; do echo 'Waiting for apt-key' ; done
     sudo apt-add-repository  'deb http://www.apache.org/dist/cassandra/debian 20x main'
 
+    # Setup apt for Elasticsearch
+    until timeout 15s sudo apt-key adv --keyserver pgp.mit.edu --recv D88E42B4; do echo 'Waiting for apt-key' ; done
+    sudo add-apt-repository 'deb http://packages.elasticsearch.org/elasticsearch/1.5/debian stable main'
+
     # Run installation 
     # DO NOT COPY --force-yes TO ANY NON-TRAVIS-CI SCRIPTS! Seriously, it can cause some 
     # major damage and should only be used inside a VM or Linux Container
@@ -355,6 +359,7 @@ class CIRunnner:
     sudo apt-get -q -y --force-yes install -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" \
       mongodb-org \
       cassandra \
+      elasticsearch \
       openssh-server
 
     # Run as travis user (who already has passwordless sudo)
@@ -427,6 +432,22 @@ class CIRunnner:
       sudo cqlsh -f config/cassandra/tfb-data.cql
     else
       >&2 echo "Cassandra did not start, skipping"
+    fi
+
+    # Setup Elasticsearch
+    echo "Populating Elasticsearch database"
+    for i in {1..45}; do
+      nc -z localhost 9200 && break || sleep 1;
+      echo "Waiting for Elasticsearch ($i/45}"
+    done
+    nc -z localhost 9200
+    if [ $? -eq 0 ]; then
+      sh config/elasticsearch/es-create-index.sh
+      python config/elasticsearch/es-db-data-gen.py > config/elasticsearch/tfb-data.json
+      curl -sS -D - -o /dev/null -XPOST localhost:9200/tfb/world/_bulk --data-binary @config/elasticsearch/tfb-data.json
+      echo "Elasticsearch DB populated"
+    else
+      >&2 echo "Elasticsearch did not start, skipping"
     fi
 
     # Setup MongoDB
