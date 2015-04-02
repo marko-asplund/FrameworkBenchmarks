@@ -348,10 +348,6 @@ class CIRunnner:
     until timeout 15s sudo apt-key adv --keyserver pgp.mit.edu --recv 4BD736A82B5C1B00; do echo 'Waiting for apt-key' ; done
     sudo apt-add-repository  'deb http://www.apache.org/dist/cassandra/debian 20x main'
 
-    # Setup apt for Elasticsearch
-    until timeout 15s sudo apt-key adv --keyserver pgp.mit.edu --recv D88E42B4; do echo 'Waiting for apt-key' ; done
-    sudo add-apt-repository 'deb http://packages.elasticsearch.org/elasticsearch/1.5/debian stable main'
-
     # Run installation 
     # DO NOT COPY --force-yes TO ANY NON-TRAVIS-CI SCRIPTS! Seriously, it can cause some 
     # major damage and should only be used inside a VM or Linux Container
@@ -359,7 +355,6 @@ class CIRunnner:
     sudo apt-get -q -y --force-yes install -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" \
       mongodb-org \
       cassandra \
-      elasticsearch \
       openssh-server
 
     # Run as travis user (who already has passwordless sudo)
@@ -435,6 +430,7 @@ class CIRunnner:
     fi
 
     # Setup Elasticsearch
+    sudo service elasticsearch start
     echo "Populating Elasticsearch database"
     for i in {1..45}; do
       nc -z localhost 9200 && break || sleep 1;
