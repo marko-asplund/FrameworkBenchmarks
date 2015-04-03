@@ -3,7 +3,8 @@
 fw_depends java8 sbt
 
 export JAVA_HOME=/opt/java8
-export PATH=$JAVA_HOME/bin:$PATH
+export PATH=$JAVA_HOME/bin:$PATH:$IROOT/sbt/bin
 
 cd $TROOT
-$IROOT/sbt/bin/sbt -J-Xmx2G assembly
+sbt -J-Xmx2G package
+sbt -J-Xmx2G assembly
